@@ -4,22 +4,188 @@ output:
   html_document:
     keep_md: true
 ---
+###             by Rashid Chohan
+
+```{r setoptions, echo=FALSE}
+library(knitr)
+opts_chunk$set(echo=FALSE, message=FALSE, warning=FALSE)
+
+```
+
+```{r}
+#Loading Libraries
+
+library("ggplot2")      #For plotting
+library(lattice)        #To plot panel graph
+
+```
+
+## PART I
+
+### 1. Loading and preprocessing the data
+
+    Loading Activity data from Activity-Data file
+```{r}
+  actdata <- read.csv("activity.csv")
+```
+  
+### 2. Process/transform the data (if necessary) into a format suitable for your analysis
+
+    No pre-processing of data is performed because we can make progress!
+
+***
+##Part II : 
+
+### What is mean total number of steps taken per day?
 
 
-## Loading and preprocessing the data
+```{r}
+# Calculating total number of steps per day, using tapply
+  dailySteps <- tapply(actdata$steps, actdata$date, sum, na.rm=TRUE)
+```
+
+###    1. Make a histogram of the total number of steps taken each day
+
+```{r , fig.height=4,fig.cap="Histogram of Total Number of Steps per day"}
+    # Display histogram with width=500 steps
+    qplot(dailySteps,binwidth=500)
+```
+
+###    2. Calculate and report the **Mean** and **Median** total number of steps taken per day
+
+***
+```{r}
+# Calculating Mean and Median of Daily Steps
+    meanDailySteps = mean(dailySteps)
+    medianDailySteps = median(dailySteps)
+```    
+
+### For Total Number of steps taken per day:
+###      **Mean** = **`r meanDailySteps`**  and 
+###      **Median** = **`r medianDailySteps`**
 
 
+***
+##Part III
 
-## What is mean total number of steps taken per day?
+### What is the average daily activity pattern?
+```{r}
+    meanStepsPerInterval <- aggregate(x=list(actdata$steps), by=list(actdata$interval), FUN=mean, na.rm=TRUE)
+    colnames(meanStepsPerInterval) <- c("Interval", "Average_Steps")
+```
+#### 1. Make a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r, fig.height=4}
+###     Average Steps taken per Day (graph)
+
+    #Graph showing Average Steps during 5-minute Time-Intervals, accross all days
+    plot(meanStepsPerInterval$Interval,meanStepsPerInterval$Average_Steps,type="l",xlab="Interval", ylab="Average Steps", main="Average Steps taken per Day")
+```
+
+#### 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+    peakInterval <- which.max(meanStepsPerInterval$Average_Steps)
+    
+    ## What's the time at this Interval of the day
+    peakTime <- meanStepsPerInterval$Interval[peakInterval]
+```
+###    **Peak Time** is **`r peakTime`**, which corresponds to **Interval ** # **`r peakInterval`** for the day.
+    
+***
+##Part IV:    Imputing missing values
+
+### 1. Calculate and report the total number of missing values in the dataset
+```{r}
+    #Which cases i.e. rows are complete (without any NA values)
+    cmpCases <- complete.cases(actdata)
+    
+    #Using the above computation, figure out total number of rows which are missing data (i.e. have NA values)
+    missingCases <- sum(!cmpCases)
+```
+
+### **Total Number of Missing** values = **`r missingCases`**
 
 
+#### 2. Devise a strategy for filling in all of the missing values in the dataset. 
 
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
+#### IMPUTING STRATEGY :  
+#### For each of the 5-minute Interval which has NA, we'll replace NA with **Mean Number of Steps (across all days)** .
 
 
+#### 3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
 
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+## Creating a copy Activity Data
+        newActivityDataWithMeans <- actdata
+        
+        #Identify those intervals which has NA values
+        IntervalsWithNAs <- which(is.na(actdata$steps))
+```        
+
+#### Assign **Average number of Steps** for each **interval with NA (value)**
+```{r}
+        newActivityDataWithMeans$steps[IntervalsWithNAs] <- meanStepsPerInterval$Average_Steps
+```
+
+###  4. Make a histogram of the total number of steps taken each day 
+```{r}
+
+        newdailySteps <- tapply(newActivityDataWithMeans$steps, newActivityDataWithMeans$date, sum, na.rm=TRUE)	
+
+        ## Display histogram with width=500 steps
+        qplot(newdailySteps,binwidth=500,main="Total Number of Steps (after replacing NAs)")
+```
+
+###     4.1) Calculate and report the **Mean** and **Median** total number of steps taken per day. 
+```{r}
+              ## Calculating Mean of Daily Steps
+              meannewDailySteps = as.integer(mean(newdailySteps))
+              
+        
+              ## Calculating Median of Daily Steps
+              mediannewDailySteps = median(newdailySteps)
+              
+```
+### After imputing:
+###      Now the **Mean** of steps taken per day is  **`r meannewDailySteps`** 
+###      and the **Median** of steps taken per day is **`r mediannewDailySteps`**
+
+
+###     4.2) Do these values differ from the estimates from the first part of the assignment? 
+###   Yes, before the Mean was **`r meanDailySteps`**  and now it is **`r meannewDailySteps`** 
+###   While the Median has changed from **`r medianDailySteps`** to be **`r mediannewDailySteps`**
+
+###     4.3) What is the impact of imputing missing data on the estimates of the total daily number of steps?
+              
+###     Yes, the after imputing the **Mean** has shifted to higher (i.e. more) steps per day. ####     This is as expected since we added steps, which were missing in the data!
+
+***
+##Part V
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+### **Yes, there are differences between Weekdays and Weekend activity***
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+```{r}
+      #Define a vector for weekday or weekend distinction 
+      dayofweekcolumn <- 
+          sapply(X = newActivityDataWithMeans$date, 
+              FUN = function(dayofweek) {
+                      if (weekdays(as.Date(dayofweek)) %in% c("Saturday", "Sunday"))
+                      { dayofweek <- "weekend" }
+                      else { dayofweek <- "weekday" }
+                    }
+            )
+      #Add this new column to the new dataset
+      newActivityDataWithDayofWeek <- cbind(newActivityDataWithMeans, dayofweekcolumn)
+      colnames(newActivityDataWithDayofWeek) <- c("steps","date","interval","dayofweek")
+
+      #Creating a new vector for the Panel Plot graph
+      meanStepsPerInterval_New <- aggregate(data=newActivityDataWithDayofWeek, steps ~ interval + dayofweek, FUN=mean)
+      
+      #Draw 
+      xyplot(data=meanStepsPerInterval_New, steps ~ interval | dayofweek, type="l", layout=c(1,2), aspect="fill")
+```
